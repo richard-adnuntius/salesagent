@@ -76,7 +76,7 @@ from enum import StrEnum
 
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.adapters.base import AdapterCreateRequest, AdapterCreateResult
+from src.adapters.base import AdapterCreateRequest, AdapterCreateResult, AdServerAdapter
 from src.core.audit_logger import get_audit_logger
 from src.core.context_manager import get_context_manager
 from src.core.database.models import AdapterConfig, CurrencyLimit, MediaBuy, PersistedMediaBuyStatus, Tenant
@@ -645,6 +645,21 @@ def _persist_adapter_package_ids(
         else:
             logger.warning(f"{prefix}Could not find package {pkg_id} to save platform_line_item_id")
     logger.info(f"{prefix}Saved platform_line_item_ids to database")
+
+
+def _upload_approved_creatives(
+    adapter: AdServerAdapter,
+    media_buy_id: str,
+    assets: list[dict[str, Any]],
+    today: datetime,
+) -> list[AssetStatus]:
+    """Upload assets whose approval has already completed.
+
+    GAM's manager bypasses its adapter's approval gate; other adapters implement
+    upload directly. Keep that compatibility decision in one place.
+    """
+    uploader = getattr(adapter, "creatives_manager", None) or adapter
+    return uploader.add_creative_assets(media_buy_id, assets, today)
 
 
 def _build_adapter_asset_from_creative(
@@ -1295,9 +1310,9 @@ def execute_approved_media_buy(
                     gam_order_id: str = response.media_buy_id
 
                     try:
-                        if hasattr(adapter, "creatives_manager") and adapter.creatives_manager and gam_order_id:
-                            asset_statuses = adapter.creatives_manager.add_creative_assets(
-                                gam_order_id, assets, datetime.now(UTC)
+                        if gam_order_id:
+                            asset_statuses = _upload_approved_creatives(
+                                adapter, gam_order_id, assets, datetime.now(UTC)
                             )
                             logger.info(f"[APPROVAL] Creative upload completed: {len(asset_statuses)} assets processed")
 
@@ -1316,7 +1331,7 @@ def execute_approved_media_buy(
                                     continue
                                 if not status.creative_id:
                                     continue
-                                creative = creative_map.get(status.creative_id)
+                                creative = creative_map.get(status.asset_id or status.creative_id)
                                 if creative is None:
                                     continue
                                 merged = _apply_creative_enrichment(creative, status)
@@ -1502,9 +1517,6 @@ def push_creative_to_existing_buy(
 
             # Resolved above, outside every unit. See the comment at the top of the try.
             adapter = get_adapter(identity)
-            if not (hasattr(adapter, "creatives_manager") and adapter.creatives_manager):
-                return False, "Adapter does not support creative upload"
-
             # platform_order_id is per-buy — any package on this buy has the same value
             media_package = uow.media_buys.get_package(media_buy_id, matching[0].package_id)
             if not media_package:
@@ -1523,7 +1535,8 @@ def push_creative_to_existing_buy(
             assert asset is not None
 
             try:
-                asset_statuses = adapter.creatives_manager.add_creative_assets(
+                asset_statuses = _upload_approved_creatives(
+                    adapter,
                     platform_order_id,
                     [asset],
                     datetime.now(UTC),
@@ -1536,7 +1549,7 @@ def push_creative_to_existing_buy(
                 return False, str(e)
 
             for status in asset_statuses:
-                if status.creative_id == creative_id:
+                if (status.asset_id or status.creative_id) == creative_id:
                     if status.status == "failed":
                         return False, status.message or "Adapter reported upload failure"
                     merged_data = _apply_creative_enrichment(creative, status)
