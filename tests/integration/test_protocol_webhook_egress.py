@@ -533,13 +533,10 @@ class TestTwoDestinationsOneService:
     binds loopback, so two origins on ``127.0.0.1`` would differ only in port,
     and the pin compares the host: a shared pinned client would serve both and
     this test would pass against the exact mutation it exists to catch. The
-    second origin therefore binds ``127.0.0.2`` — still loopback, still covered
-    by the private-range escape hatch ``LocalOriginMixin`` opens, and now also
-    served over real TLS (the generated CA's SAN covers 127.0.0.2 specifically
-    for this test — salesagent-e6h0, since the seam requires https
-    unconditionally now), and a different pin. (``localhost`` would also work
-    now that URLs are delivered verbatim, but ``127.0.0.2`` keeps the two pins
-    unambiguously distinct without depending on resolver family ordering.)
+    second origin therefore binds ``localhost``. It has a different hostname,
+    is covered by the generated TLS certificate, and works on systems that
+    expose only 127.0.0.1 as an IPv4 loopback interface. ``run_local_origin``
+    binds the address family the resolver selects, matching the egress pin.
     """
 
     async def test_one_service_delivers_to_two_hostnames(self, integration_db):
@@ -550,7 +547,7 @@ class TestTwoDestinationsOneService:
             gen_test_tls = load_gen_test_tls()
             gen_test_tls.ensure_test_tls()
             with run_local_origin(
-                listen_host="127.0.0.2", ssl_context=server_ssl_context(gen_test_tls)
+                listen_host="localhost", ssl_context=server_ssl_context(gen_test_tls)
             ) as second_origin:
                 second_origin.respond_with(200)
                 first = env.make_config(url=env.webhook_url)
