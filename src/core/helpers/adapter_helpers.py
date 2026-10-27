@@ -255,8 +255,8 @@ def get_adapter_class_for_tenant(tenant: TenantLike) -> type[AdServerAdapter]:
     return get_adapter_class(resolve_adapter_context(tenant).adapter_type)
 
 
-#: Resolved adapter type -> the AdapterConfig column backing its manual-approval
-#: requirement. Triton has no such column (not modeled), so it is absent here.
+#: Legacy adapter type -> its dedicated AdapterConfig manual-approval column.
+#: Adapters absent here use config_json; new adapters need no column or mapping.
 _MANUAL_APPROVAL_COLUMNS: dict[str, str] = {
     "google_ad_manager": "gam_manual_approval_required",
     "kevel": "kevel_manual_approval_required",
@@ -276,30 +276,39 @@ def resolve_manual_approval_signal(tenant: IdentityTenant) -> bool:
     level (a real, always-present tenant setting, not a Python-level default
     papering over a missing key) -- reading it directly is an honest claim
     about real enforced behavior, not an invented default (salesagent-rldj/
-    salesagent-y9ld Core Invariant). Falls back to the resolved adapter type's
-    own manual-approval DB column; that column is nullable and this reader
-    applies NO default when it is unset -- deliberately NOT the same
-    True-when-null policy ``get_adapter()``'s live adapter_config assembly
-    uses for enforcement, since that default is exactly the false-conformance
-    risk this reader must avoid (salesagent-becl.72 refine).
+    salesagent-y9ld Core Invariant). Otherwise, legacy adapters listed in
+    ``_MANUAL_APPROVAL_COLUMNS`` read their dedicated DB column, which remains
+    authoritative even if ``config_json`` also contains the setting. Adapters
+    absent from that mapping, including new adapters, read
+    ``config_json["manual_approval_required"]`` instead; they need no new column
+    or adapter-specific branch here.
+
+    Both storage paths require an explicit True: a missing config row, missing
+    JSON field, or null value yields False. This reader never defaults an unset
+    value to True -- deliberately different from the True-when-null policy
+    ``get_adapter()``'s legacy adapter_config assembly uses for enforcement,
+    since that default is exactly the false-conformance risk this reader must
+    avoid (salesagent-becl.72 refine).
     """
     if tenant.human_review_required:
         return True
 
     ctx = resolve_adapter_context(tenant)
     column = _MANUAL_APPROVAL_COLUMNS.get(ctx.adapter_type)
-    if not column:
-        return False
-
     tenant_id = ctx.tenant_id
 
     from src.core.database.repositories.adapter_config import read_adapter_config
 
     row = read_adapter_config(tenant_id)
-    return bool(row and getattr(row, column, None) is True)
+    if row is None:
+        return False
+    required = getattr(row, column, None) if column else (row.config_json or {}).get("manual_approval_required")
+    return required is True
 
 
-def get_adapter(identity: ResolvedIdentity) -> MockAdServerAdapter | GoogleAdManager | Kevel | TritonDigital:
+def get_adapter(
+    identity: ResolvedIdentity,
+) -> MockAdServerAdapter | GoogleAdManager | Kevel | TritonDigital | AdnuntiusAdapter:
     """The ad-server adapter that acts for *identity*.
 
     The tenant decides which ad server answers and with what configuration; the
