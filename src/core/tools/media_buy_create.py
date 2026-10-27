@@ -3736,9 +3736,7 @@ async def _create_media_buy_impl(
                             raise AdCPAdapterError()
 
                         # Get platform_line_item_id from response if available
-                        platform_line_item_id = None
-                        if response.packages and i < len(response.packages):
-                            platform_line_item_id = getattr(response.packages[i], "platform_line_item_id", None)
+                        platform_line_item_id = response.platform_line_item_ids.get(response_package_id)
 
                         # Collect platform creative IDs for association
                         platform_creative_ids = []
