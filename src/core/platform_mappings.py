@@ -9,6 +9,7 @@ The mappings are pure data with no adapter logic.
 # Map adapter short names to platform_mappings keys.
 # Used by both ORM Principal and Pydantic Principal to resolve adapter-specific IDs.
 ADAPTER_PLATFORM_MAP: dict[str, str] = {
+    "adnuntius": "adnuntius",
     "gam": "google_ad_manager",
     "google_ad_manager": "google_ad_manager",
     "kevel": "kevel",

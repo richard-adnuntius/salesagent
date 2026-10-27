@@ -4,6 +4,11 @@ Adapters connect the Prebid Sales Agent to ad servers. Choose the adapter that m
 
 ## Available Adapters
 
+### [Adnuntius](adnuntius.md)
+
+Book CPM display campaigns on an Adnuntius publisher network, attach creatives,
+manage package budgets and pauses, and report measured delivery.
+
 ### [Google Ad Manager (GAM)](gam/)
 
 Connect to Google Ad Manager to create and manage line items programmatically.
@@ -31,6 +36,7 @@ A simulated ad server for testing and development.
 | Adapter | Use Case |
 |---------|----------|
 | **GAM** | Production deployments with Google Ad Manager |
+| **Adnuntius** | Publisher-network CPM display bookings |
 | **Mock** | Testing, demos, development |
 
 ## Multi-Tenant Considerations

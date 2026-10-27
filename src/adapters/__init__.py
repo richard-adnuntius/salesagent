@@ -4,6 +4,7 @@ from typing import cast
 
 from src.core.exceptions import AdCPConfigurationError
 
+from .adnuntius import AdnuntiusAdapter
 from .base import AdapterCapabilities as AdapterCapabilities
 from .base import AdServerAdapter as AdServerAdapter
 from .base import BaseConnectionConfig as BaseConnectionConfig
@@ -18,6 +19,7 @@ from .triton_digital import TritonDigital as TritonAdapter
 
 # Map of adapter type strings to adapter classes
 ADAPTER_REGISTRY = {
+    "adnuntius": AdnuntiusAdapter,
     "gam": GAMAdapter,
     "google_ad_manager": GAMAdapter,
     "broadstreet": BroadstreetAdapter,

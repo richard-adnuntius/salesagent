@@ -75,6 +75,8 @@ FIXME_MARKER = "FIXME(#1291)"
 #: Nothing about AdCP webhook signing applies to them.
 AD_SERVER_AND_API_CALLS: frozenset[tuple[str, str]] = frozenset(
     {
+        # Adnuntius Admin API; VendorHttpClient owns the gateway dial.
+        ("src/adapters/adnuntius/client.py", "object_path(resource, object_id)"),
         ("src/adapters/broadstreet/client.py", "url"),
         ("src/adapters/xandr.py", "auth_url"),
         ("src/adapters/xandr.py", "url"),
