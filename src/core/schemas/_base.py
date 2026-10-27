@@ -2457,6 +2457,7 @@ class MediaPackage(SalesAgentBaseModel):
     product_id: str | None = None  # Product ID for this package
     budget: float | None = None  # Budget allocation in the currency specified by the pricing option
     creative_ids: list[str] | None = None  # Creative IDs to assign to this package
+    implementation_config: dict[str, Any] = Field(default_factory=dict, exclude=True)
 
 
 class AssetStatus(SalesAgentBaseModel):

@@ -91,6 +91,7 @@ def _make_mock_product():
     product.product_id = "prod_1"
     product.name = "Test Product"
     product.delivery_type = "non_guaranteed"
+    product.implementation_config = {}
     product.format_ids = [{"agent_url": "https://example.com/formats", "format_id": "fmt_1", "id": "fmt_1"}]
 
     # Set up pricing option

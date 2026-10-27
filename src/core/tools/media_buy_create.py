@@ -1132,6 +1132,7 @@ def execute_approved_media_buy(
                         targeting_overlay=targeting_overlay,
                         product_id=product_id,
                         budget=budget,
+                        implementation_config=product.implementation_config or {},
                     )
                     packages.append(media_package)
 
@@ -3366,6 +3367,7 @@ async def _create_media_buy_impl(
                         matching_package.targeting_overlay if matching_package else None,
                     ),
                     product_id=pkg_product.product_id,  # Include product_id
+                    implementation_config=pkg_product.implementation_config or {},
                     budget=package_budget_value,  # Include budget from request (now normalized)
                     creative_ids=(
                         _get_creative_ids(matching_package) if matching_package else None
